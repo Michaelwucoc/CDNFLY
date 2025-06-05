@@ -221,8 +221,8 @@ sync_time(){
 
 # 确保Python2兼容性
 need_sys() {
-    # 明确使用python2执行
-    SYS_VER=`python2 -c 'import platform;import re;sys_ver = platform.platform();sys_ver = re.sub(r\'.*-with-(.*)-.*\',\'\\g<1>\',sys_ver);print sys_ver'`
+    # 使用双引号和转义字符正确处理嵌套引号
+    SYS_VER=$(python2 -c "import platform;import re;sys_ver = platform.platform();sys_ver = re.sub(r'.*-with-(.*)-.*',r'\\1',sys_ver);print sys_ver")
     if [[ $SYS_VER =~ "Ubuntu-16.04" || $SYS_VER =~ "Ubuntu-20.04" || $SYS_VER =~ "Ubuntu-22.04" ]];then
       echo "$SYS_VER"
     elif [[ $SYS_VER =~ "centos-7" || $SYS_VER =~ "centos-8" || $SYS_VER =~ "centos-9" ]]; then
@@ -233,6 +233,7 @@ need_sys() {
       exit 1
     fi
 }
+
 
 install_depend
 need_sys
@@ -288,14 +289,14 @@ else
     let third_part=10#${agent_ver:3:2} || true
     agent_version_name="v$first_part.$second_part.$third_part"
     echo "根据主控版本$MASTER_VER得到agent需要安装的版本为$agent_version_name"
-    dir_name="cdnfly-agent-$agent_version_name"
-    tar_gz_name="$dir_name-$(get_sys_ver).tar.gz"
+    dir_name="cdnfly-agent-v5.3.5"
+    tar_gz_name="$dir_name-centos-7.tar.gz"
 
 fi
 
 cd /opt
 
-download "https://raw.githubusercontent.com/Steady-WJ/cdnfly-kaixin/main/cdnfly/$tar_gz_name" "https://raw.githubusercontent.com/Steady-WJ/cdnfly-kaixin/main/cdnfly/$tar_gz_name" "$tar_gz_name"
+download "https://raw.githubusercontent.com/Steady-WJ/cdnfly-kaixin/main/cdnfly/$tar_gz_name" "https://raw.githubusercontent.com/Steady-WJ/cdnfly-kaixin/main/cdnfly/cdnfly-agent-v5.3.5-centos-7.tar.gz" "$tar_gz_name"
 
 rm -rf $dir_name
 tar xf $tar_gz_name
