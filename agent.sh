@@ -94,12 +94,16 @@ check_sys(){
     fi
 }
 
-# 安装依赖
+# 安装依赖，明确安装Python2
 install_depend() {
     if check_sys sysRelease ubuntu;then
         apt-get update
-        # Ubuntu 20.04+ 使用python-is-python3包提供python命令
-        apt-get -y install wget python-is-python3 || apt-get -y install wget python-minimal
+        # 明确安装python2
+        apt-get -y install wget python2
+        # 创建python2的符号链接（如果不存在）
+        if ! command -v python &>/dev/null; then
+            ln -s /usr/bin/python2 /usr/bin/python
+        fi
     elif check_sys sysRelease centos;then
         # 检查包管理器类型
         if check_sys packageManager dnf; then
@@ -115,12 +119,6 @@ download(){
   local url2=$2
   local filename=$3
 
-  # 检查文件是否存在
-  # if [[ -f $filename ]]; then
-  #   echo "$filename 文件已经存在，忽略"
-  #   return
-  # fi
-
   speed1=`curl -m 5 -L -s -w '%{speed_download}' "$url1" -o /dev/null || true`
   speed1=${speed1%%.*}
   speed2=`curl -m 5 -L -s -w '%{speed_download}' "$url2" -o /dev/null || true`
@@ -135,17 +133,16 @@ download(){
     echo "using url:"$l
     wget --dns-timeout=5 --connect-timeout=5 --read-timeout=10 --tries=2 "$l" -O $filename && break
   done
-  
-
 }
 
+# 确保Python2兼容性
 get_sys_ver() {
 cat > /tmp/sys_ver.py <<EOF
 import platform
 import re
 
 sys_ver = platform.platform()
-sys_ver = re.sub(r'.*-with-(.*)-.*',"\g<1>",sys_ver)
+sys_ver = re.sub(r'.*-with-(.*)-.*',"\\g<1>",sys_ver)
 if sys_ver.startswith("centos-7"):
     sys_ver = "centos-7"
 if sys_ver.startswith("centos-8"):
@@ -160,7 +157,8 @@ if sys_ver.startswith("Ubuntu-22.04"):
     sys_ver = "Ubuntu-22.04"
 print sys_ver
 EOF
-echo `python /tmp/sys_ver.py`
+# 明确使用python2执行
+python2 /tmp/sys_ver.py
 }
 
 sync_time(){
@@ -169,7 +167,6 @@ sync_time(){
     if check_sys sysRelease ubuntu || check_sys sysRelease debian;then
         apt-get -y update
         apt-get -y install ntpdate wget
-        /usr/sbin/ntpdate -u pool.ntp.org || true
         
         # 检查Cron文件位置
         if [[ -f /var/spool/cron/crontabs/root ]]; then
@@ -222,8 +219,10 @@ sync_time(){
     fi 
 }
 
+# 确保Python2兼容性
 need_sys() {
-    SYS_VER=`python -c "import platform;import re;sys_ver = platform.platform();sys_ver = re.sub(r'.*-with-(.*)-.*','\g<1>',sys_ver);print sys_ver;"`
+    # 明确使用python2执行
+    SYS_VER=`python2 -c 'import platform;import re;sys_ver = platform.platform();sys_ver = re.sub(r\'.*-with-(.*)-.*\',\'\\g<1>\',sys_ver);print sys_ver'`
     if [[ $SYS_VER =~ "Ubuntu-16.04" || $SYS_VER =~ "Ubuntu-20.04" || $SYS_VER =~ "Ubuntu-22.04" ]];then
       echo "$SYS_VER"
     elif [[ $SYS_VER =~ "centos-7" || $SYS_VER =~ "centos-8" || $SYS_VER =~ "centos-9" ]]; then
@@ -306,4 +305,6 @@ mv $dir_name cdnfly
 # 开始安装
 cd /opt/cdnfly/agent
 chmod +x install.sh
+# 确保安装脚本使用python2
+sed -i '1s|#!/usr/bin/env python|#!/usr/bin/env python2|' install.sh
 ./install.sh $@
